@@ -41,7 +41,7 @@
             <version>2.0.1.Final</version>
         </dependency>
 
-        <!-- JUnit and Mockito for Testing -->
+		<!-- JUnit and Mockito for Testing -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
@@ -58,7 +58,7 @@
 
     <build>
         <plugins>
-            <!-- Spring Boot Plugin -->
+			<!-- Spring Boot Plugin -->
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>

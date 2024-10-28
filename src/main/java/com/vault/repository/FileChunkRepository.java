@@ -8,5 +8,5 @@ import java.util.List;
 
 @Repository
 public interface FileChunkRepository extends JpaRepository<FileChunk, Long> {
-    List<FileChunk> findByFileIdOrderByChunkOrderAsc(Long fileId);
+	List<FileChunk> findByFileIdOrderByChunkOrderAsc(Long fileId);
 }
