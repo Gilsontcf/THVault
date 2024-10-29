@@ -64,6 +64,11 @@ CREATE TABLE vault.file_chunk (
     file_id BIGINT REFERENCES files(id) ON DELETE CASCADE
 );
 
+-- Index for file name and user_id for optimized queries
+CREATE INDEX idx_files_chunk_order ON vault.file_chunk(chunk_order);
+CREATE INDEX idx_files_file_id ON vault.file_chunk(file_id);
+
+
 CREATE OR REPLACE FUNCTION update_timestamp()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -99,3 +104,7 @@ GRANT ALL PRIVILEGES ON SEQUENCE vault.users_id_seq TO vault_user;
 GRANT ALL PRIVILEGES ON TABLE vault.files TO vault_user;
 GRANT ALL PRIVILEGES ON SEQUENCE vault.files_id_seq TO vault_user;
 GRANT ALL PRIVILEGES ON TABLE vault.file_chunk TO vault_user;
+
+-- Create user to test pass = password
+INSERT INTO users (username, name, email, date_of_birth, password_hash, created_at, updated_at)
+VALUES ('testuser', 'Test User', 'testuser@example.com', '1990-01-01', '$2a$10$D9xWzZ9eK9Pv.dFhEezJnufK.J5rOLr7cdRAIL/l2B6nh9OpZ1XyW', now(), now());
