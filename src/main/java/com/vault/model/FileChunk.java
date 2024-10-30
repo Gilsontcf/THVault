@@ -3,25 +3,28 @@ package com.vault.model;
 import javax.persistence.*;
 import javax.validation.constraints.NotNull;
 
-import com.fasterxml.jackson.annotation.JsonBackReference;
+import org.hibernate.annotations.Type;
 
+/**
+ * Entity representing a chunk of a file for storage and processing.
+ */
 @Entity
 public class FileChunk {
-	@Id
-	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	private Long id;
 
-	@Lob
-	@NotNull
-	private byte[] chunk;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-	@NotNull
-	private Integer chunkOrder;
+    @Type(type="org.hibernate.type.BinaryType")
+    @NotNull
+    private byte[] chunk;
 
-	@ManyToOne(fetch = FetchType.LAZY)
+    @NotNull
+    private Integer chunkOrder;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "file_id", nullable = false)
-	@JsonBackReference
-	private File file;
+    private File file;
 
 	public Long getId() {
 		return id;

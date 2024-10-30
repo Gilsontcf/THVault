@@ -5,29 +5,33 @@ import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotNull;
 import java.time.LocalDateTime;
 
+/**
+ * Entity representing a file's metadata and ownership information.
+ */
 @Entity
 public class File {
-	@Id
-	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	private Long id;
 
-	@NotBlank
-	private String name;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-	private String description;
+    @NotBlank
+    private String name;
 
-	@NotBlank
-	private String fileType;
+    private String description;
 
-	@NotNull
-	private Long fileSize;
+    @NotBlank
+    private String fileType;
 
-	@ManyToOne(fetch = FetchType.LAZY)
-	@JoinColumn(name = "user_id")
-	private User user;
+    @NotNull
+    private Long fileSize;
 
-	private LocalDateTime createdAt;
-	private LocalDateTime updatedAt;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    private User user;
+
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 
 	public Long getId() {
 		return id;

@@ -1,4 +1,4 @@
-package com.vault.security;
+package com.vault.service;
 
 import com.vault.model.User;
 import org.springframework.security.core.GrantedAuthority;
@@ -6,8 +6,12 @@ import org.springframework.security.core.userdetails.UserDetails;
 import java.util.Collection;
 import java.util.Collections;
 
+/**
+ * Custom implementation of UserDetails to use User entity in Spring Security.
+ */
 public class CustomUserPrincipal implements UserDetails {
 
+    private static final long serialVersionUID = 1L;
     private final User user;
 
     public CustomUserPrincipal(User user) {

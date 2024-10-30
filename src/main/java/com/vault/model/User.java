@@ -7,31 +7,35 @@ import javax.validation.constraints.Past;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
+/**
+ * Entity representing a user with authentication details and metadata.
+ */
 @Entity
 @Table(name = "users")
 public class User {
-	@Id
-	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	private Long id;
 
-	@NotBlank
-	private String username;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-	@NotBlank
-	private String name;
+    @NotBlank
+    private String username;
 
-	@Email
-	@NotBlank
-	private String email;
+    @NotBlank
+    private String name;
 
-	@Past
-	private LocalDate dateOfBirth;
+    @Email
+    @NotBlank
+    private String email;
 
-	@NotBlank
-	private String passwordHash;
+    @Past
+    private LocalDate dateOfBirth;
 
-	private LocalDateTime createdAt;
-	private LocalDateTime updatedAt;
+    @NotBlank
+    private String passwordHash;
+
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 
 	public Long getId() {
 		return id;
