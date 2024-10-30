@@ -79,14 +79,6 @@ public class FileService {
         return null;
     }
 
-//    public File getFileById(Long fileId, User user) {
-//        File file = fileRepository.findOne(fileId);
-//        if (file != null && file.getUser() != null && file.getUser().getId().equals(user.getId())) {
-//            return file;
-//        }
-//        return null;
-//    }
-
     @Transactional
     public void deleteFile(Long fileId, User user) {
         File file = getFileById(fileId, user);
