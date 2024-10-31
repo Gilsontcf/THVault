@@ -5,7 +5,8 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
 /**
- * Kafka producer to send file upload data asynchronously for processing.
+ * Kafka producer for sending file chunks asynchronously to Kafka for processing.
+ * Each chunk is wrapped in a FileChunkMessage object before being sent.
  */
 @Service
 public class FileUploadProducer {
@@ -16,10 +17,10 @@ public class FileUploadProducer {
     private KafkaTemplate<String, FileChunkMessage> kafkaTemplate;
 
     /**
-     * Sends file data to Kafka for asynchronous processing.
-     *
-     * @param fileId The file ID for tracking.
-     * @param fileData The byte array of file data.
+     * Sends a file chunk message to Kafka for asynchronous processing.
+     * @param fileId The file ID to associate with this chunk.
+     * @param chunkOrder The order of the chunk to maintain sequence.
+     * @param chunkData The byte array data of the chunk.
      */
     public void sendFileChunk(Long fileId, int chunkOrder, byte[] chunkData) {
         FileChunkMessage chunkMessage = new FileChunkMessage(fileId, chunkOrder, chunkData);

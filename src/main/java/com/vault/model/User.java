@@ -15,6 +15,7 @@ import jakarta.persistence.Table;
 
 /**
  * Entity representing a user with authentication details and metadata.
+ * Stores user information like username, email, and password hash.
  */
 @Entity
 @Table(name = "users")

@@ -34,11 +34,16 @@ import com.vault.service.FileService;
 
 /**
  * REST Controller for managing file operations: upload, download, update, and
- * delete.
+ * delete. This controller handles requests for file management and interacts
+ * with Kafka for asynchronous processing.
  */
 @RestController
 @RequestMapping("/api/files")
 public class FileController {
+
+	private static final String STATUS_PENDING = "pending";
+
+	private static final String CHUNKS_SENT_ASYNCHRONOUS = "File chunks sent for asynchronous processing";
 
 	private static final String PARAMETER_MUST_BE_PROVIDED = "At least one parameter must be provided to update.";
 
@@ -48,44 +53,46 @@ public class FileController {
 
 	@Autowired
 	private FileService fileService;
-	
+
 	@Autowired
-    private FileUploadProducer fileUploadProducer;
+	private FileUploadProducer fileUploadProducer;
 
-    /**
-     * Initiates asynchronous file upload by sending file to Kafka.
-     */
-    @PostMapping
-    public ResponseEntity<Map<String, Object>> addFile(
-            @RequestParam("file") MultipartFile file,
-            @RequestParam("description") String description,
-            @AuthenticationPrincipal CustomUserPrincipal userPrincipal) throws Exception {
-    	// Save initial file metadata with status 'pending'
-    	User user = userPrincipal.getUser();
-        File newFile = new File();
-        newFile.setName(file.getOriginalFilename());
-        newFile.setDescription(description);
-        newFile.setFileType(file.getContentType());
-        newFile.setFileSize(file.getSize());
-        newFile.setStatus("pending");
-        File savedFile = fileService.saveInitialFile(newFile, user);
+	/**
+	 * Test suite for FileController class.
+	 * Tests upload, download, update, and delete functionalities for files.
+	 */
+	@PostMapping
+	public ResponseEntity<Map<String, Object>> addFile(@RequestParam("file") MultipartFile file,
+			@RequestParam("description") String description, @AuthenticationPrincipal CustomUserPrincipal userPrincipal)
+			throws Exception {
+		
+		// Save initial file metadata with status 'pending'
+		User user = userPrincipal.getUser();
+		File newFile = new File();
+		newFile.setName(file.getOriginalFilename());
+		newFile.setDescription(description);
+		newFile.setFileType(file.getContentType());
+		newFile.setFileSize(file.getSize());
+		newFile.setStatus(STATUS_PENDING);
+		File savedFile = fileService.saveInitialFile(newFile, user);
 
-        List<byte[]> chunks = fileService.splitFileIntoChunks(file.getBytes());
+		// Send file chunks to Kafka for asynchronous processing
+		List<byte[]> chunks = fileService.splitFileIntoChunks(file.getBytes());
 
-        for (int i = 0; i < chunks.size(); i++) {
-            fileUploadProducer.sendFileChunk(savedFile.getId(), i, chunks.get(i));
-        }
+		for (int i = 0; i < chunks.size(); i++) {
+			fileUploadProducer.sendFileChunk(savedFile.getId(), i, chunks.get(i));
+		}
 
-        Map<String, Object> response = new HashMap<>();
-        response.put("status", "File chunks sent for asynchronous processing");
-        response.put("fileId", savedFile.getId());
+		Map<String, Object> response = new HashMap<>();
+		response.put("status", CHUNKS_SENT_ASYNCHRONOUS);
+		response.put("fileId", savedFile.getId());
 		response.put("name", savedFile.getName());
 		response.put("description", savedFile.getDescription());
 		response.put("fileType", savedFile.getFileType());
 		response.put("fileSize", savedFile.getFileSize());
 		response.put("fileUrl", "/api/files/" + savedFile.getId());
 		return ResponseEntity.ok(response);
-    }
+	}
 
 	/**
 	 * Retrieves metadata for a specific file.
@@ -115,6 +122,7 @@ public class FileController {
 			throw new ResourceNotFoundException(FILE_NOT_FOUND);
 		}
 
+		// Using streaming to manage large files and avoid memory issues
 		byte[] decryptedFileContent = fileService.downloadFile(id, user);
 		InputStreamResource resource = new InputStreamResource(new ByteArrayInputStream(decryptedFileContent));
 
@@ -136,9 +144,10 @@ public class FileController {
 			throw new ResourceNotFoundException(FILE_NOT_FOUND);
 		}
 
-		fileService.deleteFile(id, user);Map<String, Object> response = new HashMap<>();
-        response.put("status", DELETE_SUCCESSFULL);
-        response.put("fileSize", file.getFileSize());
+		fileService.deleteFile(id, user);
+		Map<String, Object> response = new HashMap<>();
+		response.put("status", DELETE_SUCCESSFULL);
+		response.put("fileSize", file.getFileSize());
 		response.put("name", file.getName());
 		return ResponseEntity.ok(response);
 	}
@@ -152,11 +161,11 @@ public class FileController {
 			@AuthenticationPrincipal CustomUserPrincipal userPrincipal) {
 
 		if (StringUtils.isAllEmpty(name, description)) {
-		    throw new IllegalArgumentException(PARAMETER_MUST_BE_PROVIDED);
+			throw new IllegalArgumentException(PARAMETER_MUST_BE_PROVIDED);
 		}
-		
+
 		User user = userPrincipal.getUser();
-		
+
 		File existingFile = fileService.getFileById(id, user);
 		if (existingFile != null) {
 			File updatedFile = fileService.updateFileMetadata(existingFile, name, description);
@@ -168,7 +177,7 @@ public class FileController {
 			response.put("fileSize", updatedFile.getFileSize());
 			response.put("fileUrl", "/api/files/" + updatedFile.getId());
 			return ResponseEntity.ok(response);
-		}else {
+		} else {
 			throw new ResourceNotFoundException(FILE_NOT_FOUND);
 		}
 	}
