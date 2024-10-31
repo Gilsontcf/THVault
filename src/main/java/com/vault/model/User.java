@@ -1,11 +1,17 @@
 package com.vault.model;
 
-import javax.persistence.*;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+
 import javax.validation.constraints.Email;
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.Past;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
+
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 
 /**
  * Entity representing a user with authentication details and metadata.

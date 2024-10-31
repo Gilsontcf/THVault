@@ -1,9 +1,18 @@
 package com.vault.model;
 
-import javax.persistence.*;
+import java.time.LocalDateTime;
+
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotNull;
-import java.time.LocalDateTime;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 
 /**
  * Entity representing a file's metadata and ownership information.
@@ -29,6 +38,11 @@ public class File {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     private User user;
+    
+    @Column(nullable = false)
+    private String status; // pending, processing, completed, error
+
+    private String errorMessage; // Error message if processing fails
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -97,4 +111,20 @@ public class File {
 		this.updatedAt = updatedAt;
 	}
 
+	public String getStatus() {
+		return status;
+	}
+
+	public void setStatus(String status) {
+		this.status = status;
+	}
+
+	public String getErrorMessage() {
+		return errorMessage;
+	}
+
+	public void setErrorMessage(String errorMessage) {
+		this.errorMessage = errorMessage;
+	}
+	
 }

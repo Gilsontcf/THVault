@@ -1,9 +1,14 @@
 package com.vault.model;
 
-import javax.persistence.*;
 import javax.validation.constraints.NotNull;
 
-import org.hibernate.annotations.Type;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 
 /**
  * Entity representing a chunk of a file for storage and processing.
@@ -15,7 +20,6 @@ public class FileChunk {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Type(type="org.hibernate.type.BinaryType")
     @NotNull
     private byte[] chunk;
 

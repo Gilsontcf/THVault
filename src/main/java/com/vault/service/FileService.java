@@ -1,7 +1,10 @@
 package com.vault.service;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,86 +19,120 @@ import com.vault.repository.FileChunkRepository;
 import com.vault.repository.FileRepository;
 import com.vault.util.FileEncryptionUtil;
 
+import io.micrometer.common.util.StringUtils;
+
 /**
  * Service for handling file operations: save, download, update, delete.
  */
 @Service
 public class FileService {
 
-    @Autowired
-    private FileRepository fileRepository;
+	@Autowired
+	private FileRepository fileRepository;
 
-    @Autowired
-    private FileChunkRepository fileChunkRepository;
+	@Autowired
+	private FileChunkRepository fileChunkRepository;
 
-    private final FileEncryptionUtil fileEncryptionUtil;
+	private final FileEncryptionUtil fileEncryptionUtil;
 
-    @Autowired
-    public FileService(@Value("${app.security.aes-file-key}") String aesKey) {
-        this.fileEncryptionUtil = new FileEncryptionUtil(aesKey);
-    }
+	@Autowired
+	public FileService(@Value("${app.security.aes-file-key}") String aesKey) {
+		this.fileEncryptionUtil = new FileEncryptionUtil(aesKey);
+	}
 
-    public File saveFile(File file, List<byte[]> chunks, User user) throws Exception {
-        file.setUser(user);
-        file.setCreatedAt(LocalDateTime.now());
-        file.setUpdatedAt(LocalDateTime.now());
-        fileRepository.save(file);
+	@Transactional(readOnly = true)
+	public byte[] downloadFile(Long fileId, User user) throws Exception {
+		List<FileChunk> chunks = fileChunkRepository.findByFileIdOrderByChunkOrderAsc(fileId);
+		ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+		for (FileChunk chunk : chunks) {
+			byte[] decryptedChunk = fileEncryptionUtil.decrypt(chunk.getChunk());
+			outputStream.write(decryptedChunk);
+		}
+		return outputStream.toByteArray();
+	}
 
-        if (chunks != null && !chunks.isEmpty()) {
-            int order = 0;
-            for (byte[] chunk : chunks) {
-                if (chunk != null) {
-                    byte[] encryptedChunk = fileEncryptionUtil.encrypt(chunk);
-                    FileChunk fileChunk = new FileChunk();
-                    fileChunk.setFile(file);
-                    fileChunk.setChunk(encryptedChunk);
-                    fileChunk.setChunkOrder(order++);
-                    fileChunkRepository.save(fileChunk);
-                }
-            }
-        } else {
-            throw new IllegalArgumentException("Chunks cannot be null or empty");
-        }
+	public File getFileById(Long fileId, User user) {
+		File file = fileRepository.findByIdAndUserId(fileId, user.getId());
+		if (file != null) {
+			return file;
+		}
+		return null;
+	}
 
-        return file;
-    }
+	@Transactional
+	public void deleteFile(Long fileId, User user) {
+		File file = getFileById(fileId, user);
+		if (file != null) {
+			fileChunkRepository.deleteByFileId(fileId);
+			fileRepository.delete(file);
+		}
+	}
 
-    @Transactional(readOnly = true)
-    public byte[] downloadFile(Long fileId, User user) throws Exception {
-        List<FileChunk> chunks = fileChunkRepository.findByFileIdOrderByChunkOrderAsc(fileId);
-        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        for (FileChunk chunk : chunks) {
-            byte[] decryptedChunk = fileEncryptionUtil.decrypt(chunk.getChunk());
-            outputStream.write(decryptedChunk);
-        }
-        return outputStream.toByteArray();
-    }
-    
-    public File getFileById(Long fileId, User user) {
-        File file = fileRepository.findByIdAndUserId(fileId, user.getId());
-        if (file != null) {
-            return file;
-        }
-        return null;
-    }
+	public File updateFileMetadata(File existingFile, String newName, String newDescription) {
 
-    @Transactional
-    public void deleteFile(Long fileId, User user) {
-        File file = getFileById(fileId, user);
-        if (file != null) {
-            fileChunkRepository.deleteByFileId(fileId);
-            fileRepository.delete(file);
-        }
-    }
+		if (StringUtils.isNotEmpty(newName)) {
+			existingFile.setName(newName);
+		}
+		if (StringUtils.isNotEmpty(newDescription)) {
+			existingFile.setDescription(newDescription);
+		}
+		existingFile.setUpdatedAt(LocalDateTime.now());
+		return fileRepository.save(existingFile);
+	}
 
-    public File updateFileMetadata(Long fileId, String newName, String newDescription, User user) {
-        File existingFile = getFileById(fileId, user);
-        if (existingFile != null) {
-            existingFile.setName(newName);
-            existingFile.setDescription(newDescription);
-            existingFile.setUpdatedAt(LocalDateTime.now());
-            return fileRepository.save(existingFile);
-        }
-        throw new RuntimeException("File not found or access denied");
-    }
+	public File saveInitialFile(File file, User user) {
+		file.setUser(user);
+		file.setCreatedAt(LocalDateTime.now());
+		file.setStatus("pending");
+		return fileRepository.save(file);
+	}
+
+	public void updateFileStatus(Long fileId, String status, String errorMessage) {
+		File file = fileRepository.findById(fileId).orElseThrow(() -> new RuntimeException("File metadata not found"));
+		file.setStatus(status);
+		file.setUpdatedAt(LocalDateTime.now());
+		file.setErrorMessage(errorMessage);
+		fileRepository.save(file);
+	}
+
+	public List<byte[]> splitFileIntoChunks(byte[] fileData) throws IOException {
+		int chunkSize = 512 * 512; // 512Kb
+		List<byte[]> chunks = new ArrayList<>();
+		ByteArrayInputStream inputStream = new ByteArrayInputStream(fileData);
+		byte[] buffer = new byte[chunkSize];
+		int bytesRead;
+
+		while ((bytesRead = inputStream.read(buffer)) != -1) {
+			byte[] chunk = new byte[bytesRead];
+			System.arraycopy(buffer, 0, chunk, 0, bytesRead);
+			chunks.add(chunk);
+		}
+
+		return chunks;
+	}
+
+	/**
+	 * Persists each chunk in the database as part of the file upload process.
+	 *
+	 * @param fileId     The ID of the file being processed.
+	 * @param chunkOrder The order of the chunk in the file.
+	 * @param chunkData  The byte array data of the chunk.
+	 * @throws Exception
+	 */
+	public void processFileChunk(Long fileId, int chunkOrder, byte[] chunkData) throws Exception {
+		File file = fileRepository.findById(fileId).orElseThrow(() -> new RuntimeException("File metadata not found"));
+
+		// Save each chunk to the file_chunk table
+		if (chunkData != null) {
+			byte[] encryptedChunk = fileEncryptionUtil.encrypt(chunkData);
+			FileChunk fileChunk = new FileChunk();
+			fileChunk.setFile(file);
+			fileChunk.setChunk(encryptedChunk);
+			fileChunk.setChunkOrder(chunkOrder);
+			fileChunkRepository.save(fileChunk);
+		} else {
+			throw new IllegalArgumentException("Chunks cannot be null or empty");
+		}
+
+	}
 }

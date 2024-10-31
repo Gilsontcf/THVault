@@ -1,77 +1,167 @@
-# THVault
 
-# Vault Application
+# Vault API
 
-This is a secure RESTful API for storing and managing files, built with Java 8, Spring Boot, and PostgreSQL. The application supports file upload with chunking, file metadata, and user-specific permissions.
+This project is a file management API built in Java, using Spring Boot and Kafka for asynchronous uploads. The API enables operations such as file upload, download, update, and deletion. It also provides chunk encryption, access control, and optimizations for high load.
 
 ## Features
 
-- **User Authentication**: Only logged-in users can add, retrieve, update, or delete files.
-- **File Upload with Chunking**: Large files are split into chunks for efficient storage and management.
-- **User-Specific File Access**: Users can only access files they uploaded.
-- **File Metadata Support**: Includes file name, type, size, and additional description fields.
+- **File Upload and Download**: Supports file storage in chunks to facilitate transmission and retrieval.
+- **Asynchronous Upload with Kafka**: Kafka is used to manage the upload of large files asynchronously, splitting the process into chunks to prevent overloading.
+- **AES Encryption**: All file chunks are encrypted using AES before storage for added security.
+- **Access Control with Spring Security**: Protects endpoints with role-based authentication and authorization.
+- **PostgreSQL Performance Configuration**: Cache adjustments and optimizations to support high loads.
 
-## Prerequisites
+## Architecture and Design
 
-- Java 8
-- PostgreSQL
-- Maven
+The project follows the **MVC** (Model-View-Controller) architecture to organize control logic, data handling, and user interactions. It also leverages a **microservices** pattern with Kafka to ensure scalability in the asynchronous processing of large files, distributing the load across services.
 
-## Getting Started
+### Key Components
 
-### Database Setup
+- **Controller Layer**: Manages API requests.
+- **Service Layer**: Processes business logic, including encryption and chunk handling.
+- **Repository Layer**: Communicates with the PostgreSQL database.
+- **Kafka Producer/Consumer**: Handles sending and consuming chunk messages for asynchronous processing.
 
-1. Start PostgreSQL and create a database user:
-   ```sql
-   CREATE USER vault_user WITH PASSWORD 'your_password';
-   
-Run the create_database.sql script to set up the database:
-psql -U vault_user -f path/to/create_database.sql
+## Setup and Execution
 
-Application Configuration
-Edit the application.properties file in src/main/resources with your database credentials.
+### Prerequisites
 
-properties
+- **Java 17**
+- **Maven**
+- **PostgreSQL**
+- **Kafka**
 
-spring.datasource.url=jdbc:postgresql://localhost:5432/vault_db
-spring.datasource.username=vault_user
-spring.datasource.password=your_password
+### Installation
 
-Build and Run the Application
-Use Maven to build the project:
-mvn clean install
+1. **Clone the repository**:
+   ```bash
+   git clone https://github.com/Gilsontcf/THVault.git
+   ```
 
-Run the application:
-mvn spring-boot:run
+2. **Configure PostgreSQL**:
+   - Create a database for the project.
+   - Adjust the PostgreSQL connection credentials in `application.properties` with the correct username, password, and database name.
 
-The application will start on http://localhost:8081.
+3. **Configure Kafka**:
+   - Install and start Kafka on a local or remote server.
+   - In `application.properties`, set the Kafka server address:
+     ```properties
+     spring.kafka.bootstrap-servers=localhost:9092
+     ```
 
-API Endpoints
-User Authentication
-Basic authentication with username and password is required for all endpoints.
+4. **Set up AES Key**:
+   - In `application.properties`, configure the AES key for file encryption:
+     ```properties
+     app.security.aes-file-key=<your-key-here>
+     ```
 
-File Management Endpoints
-Upload File: POST /api/files
+5. **Build and start the application**:
+   ```bash
+   mvn clean install
+   mvn spring-boot:run
+   ```
 
-Uploads a file in chunks.
-Requires file (MultipartFile) and description (String).
-Get File Info: GET /api/files/{id}
+## API Endpoints
 
-Retrieves file metadata by file ID.
-Get File Chunks: GET /api/files/{id}/chunks
+### File Upload
 
-Retrieves individual chunks for the file with the specified ID.
-Download File: GET /api/files/{id}/download
+```http
+POST /api/files
+```
 
-Downloads the complete file by consolidating all chunks.
-Delete File: DELETE /api/files/{id}
+**Description**: Initiates file upload in chunks asynchronously.
 
-Deletes the specified file and returns a success message.
-Testing the API
-Use Postman or any other REST client to test the endpoints. For example, to upload a file, authenticate with your credentials and send a POST request with the file and description.
+**Parameters**:
+- `file`: The file to be uploaded.
+- `description`: Description of the file.
 
-Logging
-Logging is enabled for debugging purposes. You can adjust the log level in application.properties.
+**Response**:
+- URL to check the file status.
 
-License
+### File Download
+
+```http
+GET /api/files/{id}/download
+```
+
+**Description**: Downloads a file by its ID.
+
+### Update File Metadata
+
+```http
+PUT /api/files/{id}
+```
+
+**Description**: Updates file metadata (name and description).
+
+**Parameters**:
+- `name`: New name for the file.
+- `description`: New description for the file.
+
+### Delete File
+
+```http
+DELETE /api/files/{id}
+```
+
+**Description**: Deletes the file specified by the ID.
+
+## Security
+
+Security is managed by **Spring Security**, configuring role-based authentication. To access protected endpoints, HTTP Basic authentication is required, and the user’s role must be `USER`.
+
+### Security Configuration
+
+- **CSRF Disabled**: CSRF protection has been disabled for stateless REST API usage.
+- **HTTP Basic Authentication**: Enabled to secure API endpoints.
+
+## Kafka and Asynchronous Uploads
+
+### Configuration
+
+Kafka is used to manage asynchronous file uploads, processing each chunk separately. The `FileUploadProducer` sends file chunks to the `file-uploads` topic, while the `FileUploadConsumer` processes them for storage.
+
+### `application.properties` Configuration
+
+```properties
+# Kafka Configuration
+spring.kafka.bootstrap-servers=localhost:9092
+spring.kafka.consumer.group-id=file-upload-group
+spring.kafka.consumer.auto-offset-reset=earliest
+```
+
+## PostgreSQL Performance Optimization
+
+To improve performance under high loads, several optimizations have been applied in PostgreSQL:
+
+- **Query Cache Adjustments**: Configured to maximize query caching.
+- **Optimized Queries**: Analysis and optimization of read/write queries to reduce response time in frequent operations.
+- **`work_mem` and `maintenance_work_mem` Adjustments**: Set to better handle sorting and joining operations in complex queries.
+
+## Testing
+
+The project uses **JUnit** and **Mockito** for test coverage, including unit tests for services and controllers, as well as integration tests with `MockMvc`.
+
+To run the tests:
+
+```bash
+mvn test
+```
+
+## Package Structure
+
+The package structure is organized according to the MVC architecture, separating responsibilities across controllers, services, and repositories:
+
+- **controller**: Contains REST endpoints.
+- **service**: Contains business logic and Kafka integration.
+- **repository**: Interface to the PostgreSQL database.
+- **kafka**: Contains the Kafka `Producer` and `Consumer` for file upload.
+- **config**: Security and Kafka configurations.
+
+## License
+
 This project is licensed under the MIT License.
+
+---
+
+This README provides an overview of the project, architecture, setup, usage, and installation instructions. It can be expanded further if needed to include response examples and additional configuration details.
