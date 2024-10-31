@@ -7,7 +7,8 @@ import org.springframework.stereotype.Service;
 import com.vault.service.FileService;
 
 /**
- * Kafka consumer to process file data asynchronously.
+ * Kafka consumer for processing file chunks asynchronously.
+ * Listens to Kafka topic and handles each chunk individually.
  */
 @Service
 public class FileUploadConsumer {
@@ -16,12 +17,10 @@ public class FileUploadConsumer {
 	private FileService fileService;
 
 	/**
-	 * Listens to file upload messages and processes them.
-	 *
-	 * @param fileId   The ID of the file to process.
-	 * @param fileData The byte array of file data.
-	 * @throws Exception
-	 */
+     * Consumes a file chunk message from Kafka and processes it.
+     * Updates file status to 'completed' upon successful processing.
+     * If an error occurs, the status is updated with an error message.
+     */
 	@KafkaListener(topics = "file-uploads", groupId = "file-upload-group")
 	public void consumeFileChunk(FileChunkMessage chunkMessage) {
 		try {

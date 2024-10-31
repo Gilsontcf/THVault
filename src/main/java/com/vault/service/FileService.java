@@ -22,10 +22,15 @@ import com.vault.util.FileEncryptionUtil;
 import io.micrometer.common.util.StringUtils;
 
 /**
- * Service for handling file operations: save, download, update, delete.
+ * Service for handling file operations: save, download, update, and delete.
+ * This service also supports chunked storage and encryption for file security.
  */
 @Service
 public class FileService {
+
+	private static final String FILE_METADATA_NOT_FOUND = "File metadata not found";
+
+	private static final String CHUNKS_CANNOT_BE_NULL_OR_EMPTY = "Chunks cannot be null or empty";
 
 	@Autowired
 	private FileRepository fileRepository;
@@ -40,6 +45,10 @@ public class FileService {
 		this.fileEncryptionUtil = new FileEncryptionUtil(aesKey);
 	}
 
+	/**
+	 * Downloads a complete file by consolidating all chunks. Decrypts each chunk
+	 * before reassembling the file.
+	 */
 	@Transactional(readOnly = true)
 	public byte[] downloadFile(Long fileId, User user) throws Exception {
 		List<FileChunk> chunks = fileChunkRepository.findByFileIdOrderByChunkOrderAsc(fileId);
@@ -51,6 +60,9 @@ public class FileService {
 		return outputStream.toByteArray();
 	}
 
+	/**
+	 * Retrieves file metadata by its ID and associated user.
+	 */
 	public File getFileById(Long fileId, User user) {
 		File file = fileRepository.findByIdAndUserId(fileId, user.getId());
 		if (file != null) {
@@ -59,6 +71,9 @@ public class FileService {
 		return null;
 	}
 
+	/**
+	 * Deletes a file and all associated chunks by file ID.
+	 */
 	@Transactional
 	public void deleteFile(Long fileId, User user) {
 		File file = getFileById(fileId, user);
@@ -68,6 +83,9 @@ public class FileService {
 		}
 	}
 
+	/**
+	 * Updates the metadata of an existing file.
+	 */
 	public File updateFileMetadata(File existingFile, String newName, String newDescription) {
 
 		if (StringUtils.isNotEmpty(newName)) {
@@ -80,6 +98,9 @@ public class FileService {
 		return fileRepository.save(existingFile);
 	}
 
+	/**
+	 * Saves the initial metadata of a file with status 'pending'.
+	 */
 	public File saveInitialFile(File file, User user) {
 		file.setUser(user);
 		file.setCreatedAt(LocalDateTime.now());
@@ -87,14 +108,20 @@ public class FileService {
 		return fileRepository.save(file);
 	}
 
+	/**
+	 * Updates the status and error message of a file.
+	 */
 	public void updateFileStatus(Long fileId, String status, String errorMessage) {
-		File file = fileRepository.findById(fileId).orElseThrow(() -> new RuntimeException("File metadata not found"));
+		File file = fileRepository.findById(fileId).orElseThrow(() -> new RuntimeException(FILE_METADATA_NOT_FOUND));
 		file.setStatus(status);
 		file.setUpdatedAt(LocalDateTime.now());
 		file.setErrorMessage(errorMessage);
 		fileRepository.save(file);
 	}
 
+	/**
+	 * Splits a file into smaller chunks for chunked storage.
+	 */
 	public List<byte[]> splitFileIntoChunks(byte[] fileData) throws IOException {
 		int chunkSize = 512 * 512; // 512Kb
 		List<byte[]> chunks = new ArrayList<>();
@@ -120,7 +147,7 @@ public class FileService {
 	 * @throws Exception
 	 */
 	public void processFileChunk(Long fileId, int chunkOrder, byte[] chunkData) throws Exception {
-		File file = fileRepository.findById(fileId).orElseThrow(() -> new RuntimeException("File metadata not found"));
+		File file = fileRepository.findById(fileId).orElseThrow(() -> new RuntimeException(FILE_METADATA_NOT_FOUND));
 
 		// Save each chunk to the file_chunk table
 		if (chunkData != null) {
@@ -131,7 +158,7 @@ public class FileService {
 			fileChunk.setChunkOrder(chunkOrder);
 			fileChunkRepository.save(fileChunk);
 		} else {
-			throw new IllegalArgumentException("Chunks cannot be null or empty");
+			throw new IllegalArgumentException(CHUNKS_CANNOT_BE_NULL_OR_EMPTY);
 		}
 
 	}

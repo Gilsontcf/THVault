@@ -2,6 +2,7 @@ package com.vault.exception;
 
 /**
  * Exception thrown when a user tries to access a resource without permission.
+ * Typically used for access control and authorization errors.
  */
 public class UnauthorizedException extends RuntimeException {
     /**

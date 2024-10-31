@@ -14,7 +14,8 @@ import org.springframework.security.authentication.dao.DaoAuthenticationProvider
 import static org.springframework.security.config.Customizer.withDefaults;
 
 /**
- * Security configuration for handling user authentication and authorization.
+ * Configuration class for handling user authentication and authorization.
+ * Configures security settings such as request access levels and password encoding.
  */
 @Configuration
 @EnableWebSecurity

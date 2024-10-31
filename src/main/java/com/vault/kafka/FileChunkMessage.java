@@ -2,6 +2,10 @@ package com.vault.kafka;
 
 import java.io.Serializable;
 
+/**
+ * Message object used for sending file chunks via Kafka.
+ * Each message includes file ID, chunk order, and chunk data.
+ */
 public class FileChunkMessage implements Serializable {
 	
 	/**

@@ -8,6 +8,7 @@ import java.util.Collections;
 
 /**
  * Custom implementation of UserDetails to use User entity in Spring Security.
+ * Provides information like username, password, and authorities.
  */
 public class CustomUserPrincipal implements UserDetails {
 

@@ -12,6 +12,7 @@ import jakarta.persistence.ManyToOne;
 
 /**
  * Entity representing a chunk of a file for storage and processing.
+ * Each chunk is part of a larger file and is stored with an order to reassemble the file.
  */
 @Entity
 public class FileChunk {
